@@ -14,8 +14,6 @@ end
 
 function val(x,y)
  local za, zb = 0, 0
- local t = transform.current()
- x,y = t(x,y)
  for n=1,iterations do
   za,zb = f(x,y,za,zb)
   if mag2(za,zb) > threshold then
@@ -96,10 +94,10 @@ function calc_redraw_lengths(new_w, old_w)
  local dx1=dx0
  local dy1=dy0
  
- if x1!=x2 then
+ if x1~=x2 then
   dy1 = y0-y1
  end
- if y1!=y2 then
+ if y1~=y2 then
   dx1 = x0-x1
  end
  return 
@@ -107,17 +105,6 @@ function calc_redraw_lengths(new_w, old_w)
   asc_line_seg(y1,y1+dy0),
   asc_line_seg(x1,x1+dx1),
   asc_line_seg(y1,y1+dy1)
-end
-
-function order(x,y)
- if x > y then
-  return y, x
- end
- return x, y
-end
-
-function ordert(x,y)
- return pack(order(x,y))
 end
 
 function asc_line_seg(x0,x1)
@@ -142,23 +129,14 @@ function _init()
 end
 
 function _draw()
+ local t = transform.current()
  if redraw then
   for i=0,127 do
    for j=0,127 do
-    draw_m(i,j)
+    draw_m(i,j,t)
    end
   end
   redraw=false
- end
- 
- if dragging then
-  if last_w then
-   redraw_last()
-  end
-  current_w:draw()
- else
-  draw_m(lmx,lmy)
-  pset(mx,my,1)
  end
 end
 
@@ -197,6 +175,19 @@ function _update()
  elseif mouse2 then
   previous_tfm()
  end
+ 
+ -- this needs to happen in
+ -- _update as _draw may be 
+ -- skipped
+ if dragging then
+  if last_w then
+   redraw_last(t)
+  end
+  current_w:draw()
+ else
+  draw_m(lmx,lmy,t)
+  pset(mx,my,1)
+ end
 end
 
 function previous_tfm()
@@ -227,31 +218,32 @@ function col(v)
  return rnd(v)+8
 end
 
-function draw_m(x,y)
- pset(x,y, col(val(x,y)))
+function draw_m(i,j,t)
+ x,y=t(i,j)
+ pset(i,j,col(val(x,y)))
 end
 
-function draw_x(y)
- return function (x)
-  draw_m(x,y)
+function draw_ver(j,t)
+ return function (i)
+  draw_m(i,j,t)
  end
 end
 
-function draw_y(x)
- return function (y)
-  draw_m(x,y)
+function draw_hor(i,t)
+ return function (j)
+  draw_m(i,j,t)
  end
 end
 
-function redraw_last()
+function redraw_last(t)
  local lx0, ly0 = unpack(last_w.start)
  local lx1, ly1 = unpack(last_w.finish)
  local dx0, dy0, dx1, dy1
     = calc_redraw_lengths(current_w,last_w)
- for v in all({{dx0, draw_x(ly0)},
-               {dy0, draw_y(lx0)},
-               {dx1, draw_x(ly1)},
-               {dy1, draw_y(lx1)}}) do
+ for v in all({{dx0, draw_ver(ly0,t)},
+               {dy0, draw_hor(lx0,t)},
+               {dx1, draw_ver(ly1,t)},
+               {dy1, draw_hor(lx1,t)}}) do
   local delta, draw = unpack(v)
   if delta ~= nil then
    for i=delta[1],delta[2] do
@@ -310,6 +302,17 @@ function pop(t)
  x = t[#t]
  t[#t]=nil
  return x
+end
+
+function order(x,y)
+ if x > y then
+  return y, x
+ end
+ return x, y
+end
+
+function ordert(x,y)
+ return pack(order(x,y))
 end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
